@@ -1,14 +1,26 @@
 import express from "express";
+import multer from "multer";
 import Pet from "../models/Pet.js";
+import User from "../models/User.js";  // <-- Import User model here
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// @route   POST /api/pets
-// @desc    Add a new pet for adoption
-// @access  Private
-router.post("/", protect, async (req, res) => {
+const storage = multer.diskStorage({
+  destination(req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename(req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage });
+
+router.post("/", protect, upload.array("images", 5), async (req, res) => {
   try {
+    console.log("req.body:", req.body);
+    console.log("req.files:", req.files);
+
     const {
       name,
       species,
@@ -22,20 +34,25 @@ router.post("/", protect, async (req, res) => {
       traits,
       location,
       status,
-      images,
     } = req.body;
+
+    // parse JSON fields if sent as strings
+    const parsedAge = age ? JSON.parse(age) : { years: 0, months: 0 };
+    const parsedTraits = traits ? JSON.parse(traits) : [];
+
+    const images = req.files.map((file) => file.path);
 
     const newPet = new Pet({
       name,
       species,
       breed,
-      age,
+      age: parsedAge,
       gender,
       size,
       description,
       vaccinated,
       neutered,
-      traits,
+      traits: parsedTraits,
       location,
       status,
       images,
@@ -43,6 +60,15 @@ router.post("/", protect, async (req, res) => {
     });
 
     await newPet.save();
+
+    // Update user's addedPets array
+    const user = await User.findById(req.user._id);
+    if (user) {
+      user.addedPets = user.addedPets || [];
+      user.addedPets.push(newPet._id);
+      await user.save();
+    }
+
     res.status(201).json({ msg: "Pet listed successfully", pet: newPet });
   } catch (err) {
     console.error(err);

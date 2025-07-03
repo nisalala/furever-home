@@ -17,8 +17,10 @@ const userSchema = new mongoose.Schema({
     required: true 
   },
   location: { 
-    type: String, 
-    required: true 
+    city: { type: String, default: "Kathmandu" },
+  district: { type: String, default: "Kathmandu" },
+  province: { type: String, default: "Bagmati" },
+  country: { type: String, default: "Nepal" }
   },
   profilePicture: { 
     type: String, 
@@ -26,17 +28,17 @@ const userSchema = new mongoose.Schema({
   },
 
   preferences: {
-    species: [String],                                            // e.g., ["Dog", "Cat"]
-    breed: [String],                                             // e.g., ["Labrador", "Persian"]
-    size: [String],                                           // e.g., ["Small", "Medium"]
-    ageRange: {
-      min: Number,
-      max: Number
-    },
-    gender: [String],                                                        // ["Male", "Female"]
-    vaccinated: Boolean,
-    traits: [String],
+  species: { type: [String], default: [] },
+  breed: { type: [String], default: [] },
+  size: { type: [String], default: [] },
+  ageRange: {
+    min: { type: Number, default: 0 },
+    max: { type: Number, default: 20 }
   },
+  gender: { type: [String], default: [] },
+  vaccinated: { type: Boolean, default: false },
+  traits: { type: [String], default: [] }
+},
 
   addedPets: [{
     type: mongoose.Schema.Types.ObjectId,

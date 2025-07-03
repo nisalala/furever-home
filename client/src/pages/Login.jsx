@@ -1,81 +1,86 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function Login() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [error, setError] = useState("");
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-
     try {
-      const res = await fetch("http://localhost:5002/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+      const res = await axios.post("http://localhost:5002/api/login", {
+        email,
+        password,
       });
 
-      const data = await res.json();
+      // Save token and user to localStorage
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      if (!res.ok) {
-        setError(data.msg || "Login failed");
-        return;
-      }
-
-      // Store token and user info
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-
-      navigate("/"); // redirect to homepage or dashboard
+      // Redirect to homepage or wherever
+      navigate("/");
+      window.location.reload();
     } catch (err) {
-      console.error(err);
-      setError("Server error");
+      setError("Invalid email or password.");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-pink-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white shadow-md rounded-xl p-8 w-full max-w-md"
-      >
-        <h2 className="text-2xl font-bold mb-6 text-center text-pink-600">Welcome Back 🐾</h2>
+    <div className="min-h-screen bg-amber-50/30 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-white font-bold text-2xl">🐾</span>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600">Sign in to continue your pet adoption journey</p>
+        </div>
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-2 mb-4 border rounded-lg"
-        />
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors"
+          >
+            Sign In
+          </button>
+        </form>
 
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          className="w-full px-4 py-2 mb-6 border rounded-lg"
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-pink-500 hover:bg-pink-600 text-white py-2 rounded-lg"
-        >
-          Login
-        </button>
-      </form>
+        <div className="text-center mt-6">
+          <p className="text-gray-600">
+            New to Furever Home?{' '}
+            <a href="/register" className="text-amber-600 hover:text-amber-700 font-medium">
+              Create an account
+            </a>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

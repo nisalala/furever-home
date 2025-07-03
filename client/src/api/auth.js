@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const API = axios.create({
-  baseURL: "http://localhost:5001/api", // update port if needed
+  baseURL: "http://localhost:5002/api", // update port if needed
 });
 
 // Register
