@@ -5,3 +5,4 @@ node_modules
 # React
 client/node_modules
 client/build
+ml/rf_model.pkl
