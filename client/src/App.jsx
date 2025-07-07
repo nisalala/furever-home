@@ -2,7 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Register from './pages/Register';
 import Login from './pages/Login';
-import Navbar from './components/NavBar';
+import Navigation from './components/Navbar';
 import PetDetails from "./pages/PetDetails"; // 
 import ApplicationForm from "./pages/ApplicationForm"; 
 import BrowsePets from "./pages/BrowsePets"; 
@@ -67,7 +67,7 @@ export default function App() {
 
   return (
     <>
-      <Navbar user={user} setUser={setUser}/>
+      <Navigation user={user} setUser={setUser}/>
       <Routes>
         <Route path="/" element={<Home user={user} setUser={setUser}/>} />
         <Route path="/register" element={<Register />} />
