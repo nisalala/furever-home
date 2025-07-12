@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Calendar, MapPin, User, ShieldCheck, Heart } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import AdoptionForm from "./ApplicationForm";
+import axios from "axios";
+
 
 // Fix for marker icon not showing in Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -47,7 +49,19 @@ const PetDetails = () => {
 
     const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const pet = mockPet; // Replace with real fetch later
+const [pet, setPet] = useState(null);
+
+useEffect(() => {
+  axios.get(`http://localhost:5002/api/pets/${id}`)
+    .then(res => {
+      setPet(res.data);
+      setMainImage(res.data.images[0]);
+    })
+    .catch(err => {
+      console.error("Failed to fetch pet:", err);
+    });
+}, [id]);
+
   const [mainImage, setMainImage] = useState(pet.images[0]);
 
   return (

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, User, PlusCircle, Home, Search, Menu, X, MapPin, Calendar, Users } from 'lucide-react';
+import { Heart,Home, Search, Menu, X, MapPin, Calendar, Users } from 'lucide-react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { getBatchAdoptionLikelihood } from "../api/ml";
+import { usePetRecommendations } from '../hooks/usePetRecommendation';
+import { fetchAllPets } from "../api/pet";
+
 
 
 // Mock data for demonstration
@@ -13,15 +15,24 @@ const PetCard = ({ pet, onViewDetails }) => {
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
       <div className="relative">
-        <img
-          src={pet.imageUrl}
-          alt={pet.name}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = "/images/default-pet.jpg";
-          }}
-          className="w-full h-48 object-cover"
-        />
+        {pet.imageUrl ? (
+  <img
+    src={pet.imageUrl}
+    alt={pet.name}
+    onError={(e) => {
+      e.target.onerror = null;
+      e.target.src = "/images/default-pet.jpg";
+    }}
+    className="w-full h-48 object-cover"
+  />
+) : (
+  <img
+    src="/images/default-pet.jpg"
+    alt="Default pet"
+    className="w-full h-48 object-cover"
+  />
+)}
+
         <div className="absolute top-3 right-3">
           <button className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors">
             <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition-colors" />
@@ -34,8 +45,12 @@ const PetCard = ({ pet, onViewDetails }) => {
           <h3 className="text-lg font-semibold text-gray-900">{pet.name}</h3>
           <div className="text-right text-sm">
             <div className="text-amber-600 font-medium">
-              {pet.age || pet.ageMonths ? Math.floor((pet.age || pet.ageMonths) / 12) : "N/A"}{" "}
-              {(pet.age || pet.ageMonths) === 12 ? "year" : "years"}
+              {pet.age
+  ? `${pet.age.years} year${pet.age.years === 1 ? "" : "s"} ${pet.age.months} month${pet.age.months === 1 ? "" : "s"}`
+  : pet.ageMonths !== undefined
+    ? `${Math.floor(pet.ageMonths / 12)} year${Math.floor(pet.ageMonths / 12) === 1 ? "" : "s"}`
+    : "N/A"}
+
             </div>
             <div className="text-gray-500">{pet.gender || "Unknown"}</div>
           </div>
@@ -89,202 +104,33 @@ const HomePage = ({userData, onViewPetDetails }) => {
 
 const navigate = useNavigate();
 
+//adding pets from db instead of just mock
+    const [mockPets, setAllPets] = useState([]);
 
-  const [recommendedPets, setRecommendedPets] = useState([]);
-    const mockPets = [
-    {
-      id: 1,
-      name: "Buddy",
-      petType: "Dog",
-      breed: "Labrador",
-      ageMonths: 24,
-      color: "Yellow",
-      size: "Large",
-      weightKg: 30,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 45,
-      adoptionFee: 100,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 2,
-      name: "Mittens",
-      petType: "Cat",
-      breed: "Siamese",
-      ageMonths: 12,
-      color: "Cream",
-      size: "Small",
-      weightKg: 4,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 10,
-      adoptionFee: 60,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 3,
-      name: "Coco",
-      petType: "Rabbit",
-      breed: "Dutch",
-      ageMonths: 8,
-      color: "Brown",
-      size: "Small",
-      weightKg: 2,
-      vaccinated: 0,
-      healthCondition: 1,
-      timeInShelterDays: 20,
-      adoptionFee: 30,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 4,
-      name: "Polly",
-      petType: "Bird",
-      breed: "Parrot",
-      ageMonths: 36,
-      color: "Green",
-      size: "Small",
-      weightKg: 0.5,
-      vaccinated: 0,
-      healthCondition: 0,
-      timeInShelterDays: 60,
-      adoptionFee: 50,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 5,
-      name: "Rocky",
-      petType: "Dog",
-      breed: "Bulldog",
-      ageMonths: 30,
-      color: "Brindle",
-      size: "Medium",
-      weightKg: 25,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 35,
-      adoptionFee: 90,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1507146426996-ef05306b995a?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 6,
-      name: "Luna",
-      petType: "Cat",
-      breed: "Maine Coon",
-      ageMonths: 18,
-      color: "Gray",
-      size: "Medium",
-      weightKg: 6,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 5,
-      adoptionFee: 70,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1546182990-dffeafbe841d?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 7,
-      name: "Snowball",
-      petType: "Rabbit",
-      breed: "Angora",
-      ageMonths: 10,
-      color: "White",
-      size: "Small",
-      weightKg: 3,
-      vaccinated: 0,
-      healthCondition: 1,
-      timeInShelterDays: 25,
-      adoptionFee: 40,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 8,
-      name: "Sky",
-      petType: "Bird",
-      breed: "Canary",
-      ageMonths: 14,
-      color: "Yellow",
-      size: "Small",
-      weightKg: 0.3,
-      vaccinated: 0,
-      healthCondition: 0,
-      timeInShelterDays: 15,
-      adoptionFee: 25,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1535930749574-1399327ce78f?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 9,
-      name: "Max",
-      petType: "Dog",
-      breed: "German Shepherd",
-      ageMonths: 36,
-      color: "Black & Tan",
-      size: "Large",
-      weightKg: 35,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 40,
-      adoptionFee: 120,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1517423440428-a5a00ad493e8?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 10,
-      name: "Simba",
-      petType: "Cat",
-      breed: "Bengal",
-      ageMonths: 20,
-      color: "Orange",
-      size: "Medium",
-      weightKg: 5,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 30,
-      adoptionFee: 65,
-      previousOwner: 1,
-      imageUrl: "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 11,
-      name: "Bubbles",
-      petType: "Fish",
-      breed: "Goldfish",
-      ageMonths: 6,
-      color: "Orange",
-      size: "Small",
-      weightKg: 0.1,
-      vaccinated: 0,
-      healthCondition: 0,
-      timeInShelterDays: 5,
-      adoptionFee: 15,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=400&q=80"
-    },
-    {
-      id: 12,
-      name: "Ziggy",
-      petType: "Dog",
-      breed: "Beagle",
-      ageMonths: 14,
-      color: "Tri-color",
-      size: "Medium",
-      weightKg: 10,
-      vaccinated: 1,
-      healthCondition: 0,
-      timeInShelterDays: 20,
-      adoptionFee: 80,
-      previousOwner: 0,
-      imageUrl: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=400&q=80"
-    },
-  ];
+    useEffect(() => {
+  async function loadPets() {
+    const pets = await fetchAllPets();
+
+    // Normalize backend pets for your recommendation hook
+    const processed = pets.map(p => ({
+      ...p,
+      ageMonths: (p.age?.years || 0) * 12 + (p.age?.months || 0),
+      petType: p.species, // normalize name for your hook
+      breed: p.breed,
+      gender: p.gender,
+      size: p.size,
+      vaccinated: p.vaccinated ? 1 : 0, // your hook expects 1 or 0
+      imageUrl: p.images?.[0] ? `http://localhost:5002/${p.images[0]}` : "",
+ // if images exist
+    }));
+
+    setAllPets(processed);
+  }
+
+  loadPets();
+}, []);
+
+
 
     const petsNearUser = mockPets.filter(pet =>
    (pet.location?.city || "").toLowerCase() === (user?.location?.city || "").toLowerCase()
@@ -295,110 +141,8 @@ const navigate = useNavigate();
     favoritePetIds.includes(pet.id)
   );
 
-
-  useEffect(() => {
-  async function fetchRecommendations() {
-    if (!user?.preferences) {
-      // If no preferences, show default pets
-      setRecommendedPets(mockPets.slice(0, 8));
-      return;
-    }
-
-    const pref = user.preferences || {};
-
-    // 1. Score each pet based on preference closeness
-    const scoredPets = mockPets.map((pet) => {
-      let preferenceScore = 0;
-
-      // Species match
-      if (Array.isArray(pref.species) && pref.species.includes(pet.petType)) {
-        preferenceScore += 3;
-      }
-
-      // Breed match (case-insensitive)
-      if (
-        Array.isArray(pref.breed) &&
-        pref.breed.some((b) => b.toLowerCase() === (pet.breed || "").toLowerCase())
-      ) {
-        preferenceScore += 3;
-      }
-
-      // Size match
-      if (Array.isArray(pref.size) && pref.size.includes(pet.size)) {
-        preferenceScore += 1;
-      }
-
-      // Gender match
-      if (
-        Array.isArray(pref.gender) &&
-        pref.gender.map((g) => g.toLowerCase()).includes((pet.gender || "").toLowerCase())
-      ) {
-        preferenceScore += 1;
-      }
-
-      // Vaccinated preference
-      if (pref.vaccinated === true && pet.vaccinated === 1) {
-        preferenceScore += 1;
-      }
-
-      // Age range match
-      if (
-        pref.ageRange &&
-        typeof pref.ageRange.min === "number" &&
-        typeof pref.ageRange.max === "number"
-      ) {
-        if (pet.ageMonths >= pref.ageRange.min && pet.ageMonths <= pref.ageRange.max) {
-          preferenceScore += 2;
-        }
-      }
-
-      return { ...pet, preferenceScore };
-    });
-
-    // 2. Prepare data for ML API
-    const petDataList = scoredPets.map((pet) => ({
-      PetType: pet.petType,
-      Breed: pet.breed,
-      AgeMonths: pet.ageMonths,
-      Color: pet.color,
-      Size: pet.size,
-      WeightKg: pet.weightKg,
-      Vaccinated: pet.vaccinated,
-      HealthCondition: pet.healthCondition,
-      TimeInShelterDays: pet.timeInShelterDays,
-      AdoptionFee: pet.adoptionFee,
-      PreviousOwner: pet.previousOwner,
-    }));
-
-    try {
-      // 3. Call ML API to get adoption likelihood
-      const predictions = await getBatchAdoptionLikelihood(petDataList);
-
-      // 4. Combine preference score + ML prediction
-      const finalScoredPets = scoredPets.map((pet, idx) => {
-        const adoptionLikelihood = predictions[idx].adoption_likelihood || 0;
-        const finalScore = pet.preferenceScore * 0.6 + adoptionLikelihood * 0.4;
-        return {
-          ...pet,
-          adoptionLikelihood,
-          finalScore,
-        };
-      });
-
-      // 5. Sort by final score descending
-      finalScoredPets.sort((a, b) => b.finalScore - a.finalScore);
-
-      // 6. Show top 8
-      setRecommendedPets(finalScoredPets.slice(0, 8));
-    } catch (error) {
-      console.error("Failed to fetch recommendations:", error);
-      setRecommendedPets([]); // fallback empty
-    }
-  }
-
-  fetchRecommendations();
-}, [user?.preferences]);
-
+  //hamle banako hook
+   const recommendedPets = usePetRecommendations(user?.preferences, mockPets);
 
 
 
@@ -549,48 +293,40 @@ const navigate = useNavigate();
 {/* ✅ Personalized Sections for Logged-in Users */}
       {user && (
         <>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              Pets Recommended for You 🐾
+            </h2>
+            <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+              Based on your preference, here are some pets we picked out for our user,{" "}
+              {user?.name || "Guest"}
+            </p>
+          </div>
 
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Pets Recommended for You 🐾</h2>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Based on your preference, here are some pets we picked out for our user, {user?.name || "Guest"}
-          </p>
-        </div>
-
-      {/* Featured Pets (Recommended) */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-         {recommendedPets.length === 0 ? (
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {recommendedPets.length === 0 ? (
   <p className="text-center text-gray-600 text-lg py-8">
     No pets matched your preferences. Try adjusting your filters.
   </p>
 ) : (
-  limitToFour(recommendedPets).map(pet => (
-    <PetCard key={pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+  limitToFour(recommendedPets).map((pet) => (
+    <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
   ))
 )}
-
-        </div>
-      </div>
-
-      <div className="text-center mt-12">
-          <button onClick={()=>{
-            navigate('/recom')
-          }} className="bg-white border-2 border-gray-200 hover:border-amber-300 text-gray-700 hover:text-amber-700 px-8 py-3 rounded-lg font-medium transition-all">
-            View All Recommended Pets
-          </button>
-        </div>
-          {/* 💖 Favorites */}
-          {favoritePets.length > 0 && (
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Your Favorite Pets</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {favoritePets.map(pet => (
-                  <PetCard key={pet.id} pet={pet} onViewDetails={onViewPetDetails} />
-                ))}
-              </div>
             </div>
-          )}
+          </div>
+
+          <div className="text-center mt-12">
+            <button
+              onClick={() => {
+                navigate("/recom");
+              }}
+              className="bg-white border-2 border-gray-200 hover:border-amber-300 text-gray-700 hover:text-amber-700 px-8 py-3 rounded-lg font-medium transition-all"
+            >
+              View All Recommended Pets
+            </button>
+          </div>
 
           {/* 📍 Pets Near You */}
           {petsNearUser.length > 0 && (
@@ -599,9 +335,10 @@ const navigate = useNavigate();
                 Pets Near You {user.location?.city || "Unknown City"}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {petsNearUser.map(pet => (
-                  <PetCard key={pet.id} pet={pet} onViewDetails={onViewPetDetails} />
-                ))}
+                {petsNearUser.map((pet) => (
+  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+))}
+
               </div>
             </div>
           )}
@@ -618,9 +355,9 @@ const navigate = useNavigate();
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {mockPets.map((pet) => (
-            <PetCard key={pet.id} pet={pet} onViewDetails={onViewPetDetails} />
-          ))}
+         {mockPets.map((pet) => (
+  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+))}
         </div>
         <div className="text-center mt-12">
           <button className="bg-white border-2 border-gray-200 hover:border-amber-300 text-gray-700 hover:text-amber-700 px-8 py-3 rounded-lg font-medium transition-all">
