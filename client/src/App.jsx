@@ -11,7 +11,8 @@ import UploadPet from "./pages/UploadPet";
 import Testt from "./pages/testing"; 
 import Recom from "./pages/Recom"; 
 import Preference from "./pages/Preferences"; 
-import UserProfile from "./pages/UserProfile"; 
+import UserProfile from "./pages/UserProfile";
+import AdminDashboard from './pages/AdminDashboard'; 
 
 import axios from "axios";
 
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="/recom" element={<Recom user={user} setUser={setUser}/>} />
         <Route path="/profile" element={<UserProfile user={user} setUser={setUser}/>} />
         <Route path="/preference" element={<Preference user={user} setUser={setUser} token={token}/>} />
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
     </>
   );

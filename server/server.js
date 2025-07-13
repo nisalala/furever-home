@@ -11,6 +11,8 @@ import petRoutes from "./routes/petRoutes.js";
 
 import mlRoutes from './routes/ml.js';
 
+import adminRoutes from './routes/adminRoutes.js';
+
 //images ko lagi
 import path from "path";
 import { fileURLToPath } from "url";
@@ -56,6 +58,9 @@ app.use('/api/applications', protect, applicationRoutes);
 app.get('/', (req, res) => {
   res.send('Furever Home Backend Running!');
 });
+
+//admin
+app.use('/api/admin', adminRoutes);
 
 // Connect to MongoDB and Start Server
 const PORT = 5002 || process.env.PORT;

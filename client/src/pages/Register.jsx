@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 export default function Register() {
   const navigate = useNavigate();
 
+  
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     name: "",
@@ -19,7 +21,8 @@ export default function Register() {
   });
 
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState(null);
+  const [profilePictureFile, setProfilePictureFile] = useState(null);
+const [preview, setPreview] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,16 +40,13 @@ export default function Register() {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setForm((prev) => ({ ...prev, profilePicture: reader.result }));
-        setPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  const file = e.target.files[0];
+  if (file) {
+    setProfilePictureFile(file);
+    setPreview(URL.createObjectURL(file));
+  }
+};
+
 
   const validateStep = () => {
   if (step === 1) {
@@ -75,32 +75,43 @@ export default function Register() {
   const handleBack = () => setStep(step - 1);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!form.profilePicture) {
-      form.profilePicture = "https://yourdomain.com/default-profile.png"; // fallback default pic URL
+  const data = new FormData();
+
+  data.append("name", form.name);
+  data.append("email", form.email);
+  data.append("password", form.password);
+  data.append("location[city]", form.location.city);
+  data.append("location[district]", form.location.district);
+  data.append("location[province]", form.location.province);
+  data.append("location[country]", form.location.country);
+
+  if (profilePictureFile) {
+    data.append("profilePicture", profilePictureFile);
+  }
+
+  try {
+    const res = await fetch("http://localhost:5002/api/register", {
+      method: "POST",
+      body: data,
+      // Do NOT set Content-Type header; browser sets it automatically for FormData
+    });
+
+    const result = await res.json();
+
+    if (res.ok) {
+      alert("Registration successful!");
+      navigate("/login");
+    } else {
+      setError(result.message || "Something went wrong");
     }
+  } catch (err) {
+    console.error("Registration error:", err);
+    setError("Server error. Please try again.");
+  }
+};
 
-    try {
-      const res = await fetch("http://localhost:5002/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        alert("Registration successful!");
-        navigate("/login");
-      } else {
-        setError(data.message || "Something went wrong");
-      }
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError("Server error. Please try again.");
-    }
-  };
 
   return (
     <div className="min-h-screen bg-amber-50/30 flex items-center justify-center p-4">
@@ -283,6 +294,7 @@ export default function Register() {
                     className="hidden"
                   />
                 </label>
+                
               </div>
 
               <div className="flex justify-between">

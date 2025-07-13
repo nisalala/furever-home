@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 
 const UploadPetPage = () => {
+  
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: "",

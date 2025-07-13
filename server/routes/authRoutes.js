@@ -2,23 +2,35 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import { protect } from "../middleware/authMiddleware.js";
+import multer from "multer";
+
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, "./uploads");
+  },
+  filename: function(req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname);
+  },
+});
+const upload = multer({ storage });
 
 const router = express.Router();
 
 // @route   POST /api/register
 // @desc    Register a new user
 // @access  Public
-router.post("/register", async (req, res) => {
+router.post("/register", upload.single("profilePicture"), async (req, res) => {
   try {
     const { name, email, password, location } = req.body;
+    const locationObj = typeof location === 'string' ? JSON.parse(location) : location;
+    const profilePicture = req.file ? `uploads/${req.file.filename}` : "";
 
-     console.log("📥 Incoming Request:", req.body);
-
+    console.log("📥 Incoming Request:", req.body);
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-       console.log("⚠️ User already exists");
+      console.log("⚠️ User already exists");
       return res.status(400).json({ msg: "User already exists" });
     }
 
@@ -32,7 +44,8 @@ router.post("/register", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      location,
+      location: locationObj,
+      profilePicture,
     });
 
     await newUser.save();

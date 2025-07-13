@@ -51,7 +51,12 @@ const userSchema = new mongoose.Schema({
   adoptionApplications: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Application"
-  }]
+  }],
+    role: {
+    type: String,
+    enum: ['user', 'admin'],
+    default: 'user'
+  }
 }, { timestamps: true });
 
 
