@@ -21,9 +21,10 @@ export const getUserProfile = async (req, res) => {
       .populate("pet")
       .populate("applicant");
 
-    const applicationsReceived = receivedApplications.filter(app => {
-      return app.pet.listedBy.toString() === userId;
-    });
+ const applicationsReceived = receivedApplications.filter(app => {
+  return app.pet?.listedBy?.toString() === userId;
+});
+
 
     res.status(200).json({ user, applicationsReceived });
   } catch (err) {

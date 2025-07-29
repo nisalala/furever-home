@@ -1,7 +1,34 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import VerifyIDModal from "../components/VerifyIdModal";
+
 
 const UploadPetPage = () => {
+
+  //checking if user verified or not
+  const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get("http://localhost:5002/api/users/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setUser(res.data);
+      } catch (err) {
+        console.error("Failed to fetch user", err);
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
   
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -164,8 +191,63 @@ const UploadPetPage = () => {
     alert("Failed to upload pet. Please try again.");
   }
 };
-console.log("Manish")
 
+  if (loadingUser) {
+    return <div className="text-center mt-20 text-lg text-amber-600">Loading...</div>;
+  }
+
+ if (!user?.isVerified) {
+  const status = user.verificationStatus;
+
+  return (
+    <>
+      <div className="min-h-screen flex flex-col justify-center items-center bg-amber-50">
+        <div className="max-w-xl bg-white shadow-xl rounded-2xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-amber-700 mb-4">
+            Verification Required
+          </h2>
+          {status === "pending" ? (
+            <>
+              <p className="text-gray-600 mb-6">
+                Your ID has been uploaded and is under review. Please wait while we verify your account.
+              </p>
+            </>
+          ) : status === "rejected" ? (
+            <>
+              <p className="text-red-600 mb-4">
+                Your ID verification was rejected. Please upload a valid document.
+              </p>
+              <button
+                onClick={() => setShowVerifyModal(true)}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg transition"
+              >
+                Re-upload ID
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600 mb-6">
+                You must verify your identity before listing a pet for adoption.
+              </p>
+              <button
+                onClick={() => setShowVerifyModal(true)}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-lg transition"
+              >
+                Upload ID Now
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {showVerifyModal && (
+        <VerifyIDModal onClose={() => setShowVerifyModal(false)} />
+      )}
+    </>
+  );
+}
+
+else{
   return (
     <div className="min-h-screen bg-amber-50/20 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto bg-white shadow-xl rounded-2xl p-8">
@@ -374,6 +456,7 @@ console.log("Manish")
       </div>
     </div>
   );
+}
 };
 
 export default UploadPetPage;

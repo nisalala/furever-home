@@ -3,6 +3,10 @@ import { Heart, PlusCircle, Home, Search, Menu, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Navigation = ({ user, setUser }) => {
+  
+ const role = user?.role;
+ if(role === 'admin'){return null}
+   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState("/");
   const navigate = useNavigate();
@@ -17,6 +21,7 @@ const Navigation = ({ user, setUser }) => {
   if (user) {
     navItems.push({ id: "upload", label: "List a Pet", icon: PlusCircle });
   }
+  
 
   return (
     <nav className="sticky top-0 bg-white border-b-2 border-amber-100 shadow-s z-10">

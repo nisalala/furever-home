@@ -56,7 +56,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
-  }
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationStatus: {
+    type: String,
+    enum: ["unverified", "pending", "verified", "rejected"],
+    default: "unverified",
+  },
+  idDocument: {
+    type: String,
+    default: "",
+  },
+
 }, { timestamps: true });
 
 

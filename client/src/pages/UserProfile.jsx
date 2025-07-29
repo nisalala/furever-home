@@ -57,6 +57,34 @@ const UserProfile = ({ user: loggedInUser }) => {
                 ? `${user.location.city}, ${user.location.district}, ${user.location.province}, ${user.location.country}`
                 : "No location set"}
             </p>
+              {/* Verification Status */}
+      {user.verificationStatus === "verified" ? (
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full font-semibold text-sm">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Verified User
+        </div>
+      ) : user.verificationStatus === "pending" ? (
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold text-sm">
+          Pending Verification
+        </div>
+      ) : user.verificationStatus === "rejected" ? (
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-700 rounded-full font-semibold text-sm">
+          Verification Rejected
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-700 rounded-full font-semibold text-sm">
+          Not Verified
+        </div>
+      )}
           </div>
         </div>
       </section>

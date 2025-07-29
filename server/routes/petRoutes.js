@@ -18,6 +18,12 @@ const upload = multer({ storage });
 
 router.post("/", protect, upload.array("images", 5), async (req, res) => {
   try {
+    if (!req.user.isVerified) {
+      return res
+        .status(403)
+        .json({ message: "Only verified users can add pets." });
+    }
+
     console.log("req.body:", req.body);
     console.log("req.files:", req.files);
 

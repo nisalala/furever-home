@@ -21,7 +21,14 @@ export default function Login() {
       localStorage.setItem("user", JSON.stringify(res.data.user));
 
       // Redirect to homepage or wherever
-      navigate("/");
+       const user = res.data.user; // ✅ define user from response
+
+if (user.role === "admin") {
+  navigate("/admin");
+} else {
+  navigate("/");
+}
+
       window.location.reload();
     } catch (err) {
       setError("Invalid email or password.");
