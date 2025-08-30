@@ -22,6 +22,10 @@ const userSchema = new mongoose.Schema({
   province: { type: String, default: "Bagmati" },
   country: { type: String, default: "Nepal" }
   },
+  coordinates: {
+    type: [Number], // [longitude, latitude]
+    default: [85.324, 27.7172], // Default: Kathmandu coords
+  },
   profilePicture: { 
     type: String, 
     default: "" 

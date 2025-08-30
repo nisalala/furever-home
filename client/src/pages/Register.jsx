@@ -4,25 +4,24 @@ import { useNavigate } from "react-router-dom";
 export default function Register() {
   const navigate = useNavigate();
 
-  
-
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    location: {
-      city: "",
-      district: "",
-      province: "",
-      country: "Nepal",
-    },
-    profilePicture: "",
-  });
-
-  const [error, setError] = useState("");
-  const [profilePictureFile, setProfilePictureFile] = useState(null);
+ const [step, setStep] = useState(1);
+const [form, setForm] = useState({
+  name: "",
+  email: "",
+  password: "",
+  rePassword: "",
+  location: {
+    city: "",
+    district: "",
+    province: "",
+    country: "Nepal",
+  },
+  profilePicture: "",
+});
+const [error, setError] = useState("");
+const [profilePictureFile, setProfilePictureFile] = useState(null);
 const [preview, setPreview] = useState(null);
+const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -49,13 +48,26 @@ const [preview, setPreview] = useState(null);
 
 
   const validateStep = () => {
-  if (step === 1) {
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-      setError("Please fill out all required fields on this step.");
-      return false;
-    }
-    // You could add more email format validation here if you want.
-  } else if (step === 2) {
+if (step === 1) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!form.name.trim() || !form.email.trim() || !form.password.trim() || !form.rePassword.trim()) {
+    setError("Please fill out all required fields.");
+    return false;
+  }
+  if (!emailRegex.test(form.email)) {
+    setError("Please enter a valid email address.");
+    return false;
+  }
+  if (form.password !== form.rePassword) {
+    setError("Passwords do not match.");
+    return false;
+  }
+  if (form.password.length < 6) {
+    setError("Password must be at least 6 characters long.");
+    return false;
+  }
+}
+ else if (step === 2) {
     const { city, district, province } = form.location;
     if (!city.trim() || !district.trim() || !province.trim()) {
       setError("Please fill out all required location fields.");
@@ -127,46 +139,73 @@ const [preview, setPreview] = useState(null);
           {step === 1 && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Full Name
-                </label>
-                <input
-                  name="name"
-                  onChange={handleChange}
-                  value={form.name}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
-                  placeholder="Your name"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  onChange={handleChange}
-                  value={form.email}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
-                  placeholder="Your email"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <input
-                  name="password"
-                  type="password"
-                  onChange={handleChange}
-                  value={form.password}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
-                  placeholder="Choose a password"
-                />
-              </div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Full Name
+  </label>
+  <input
+    name="name"
+    value={form.name}
+    onChange={handleChange}
+    required
+    placeholder="Your name"
+    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Email Address
+  </label>
+  <input
+    name="email"
+    type="email"
+    value={form.email}
+    onChange={handleChange}
+    required
+    placeholder="Your email"
+    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
+  />
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Password
+  </label>
+  <div className="relative">
+    <input
+      name="password"
+      type={showPassword ? "text" : "password"}
+      value={form.password}
+      onChange={handleChange}
+      required
+      placeholder="Choose a password"
+      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
+    />
+    <button
+      type="button"
+      onClick={() => setShowPassword(!showPassword)}
+      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+    >
+      {showPassword ? "Hide" : "Show"}
+    </button>
+  </div>
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700 mb-1">
+    Confirm Password
+  </label>
+  <input
+    name="rePassword"
+    type={showPassword ? "text" : "password"}
+    value={form.rePassword}
+    onChange={handleChange}
+    required
+    placeholder="Re-enter your password"
+    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500"
+  />
+</div>
+
 
               <div className="flex justify-end">
                 <button

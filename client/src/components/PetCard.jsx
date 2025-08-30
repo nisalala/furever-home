@@ -3,17 +3,21 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MapPin} from 'lucide-react';
 
 
-const PetCard = ({ pet, onViewDetails }) => {
+const PetCard = ({ pet, onViewDetails, onToggleFavorite  }) => {
+
+   const handleFavoriteClick = () => {
+    if (onToggleFavorite) onToggleFavorite(pet._id);
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
-      <div className="relative">
-        <img
-          src={pet.image}
-          alt={pet.name}
-          className="w-full h-48 object-cover"
-        />
+       <div className="relative">
+        <img src={pet.image} alt={pet.name} className="w-full h-48 object-cover" />
         <div className="absolute top-3 right-3">
-          <button className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors">
+          <button
+            onClick={handleFavoriteClick}
+            className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors"
+          >
             <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition-colors" />
           </button>
         </div>

@@ -3,15 +3,13 @@ import { Heart,Home, Search, Menu, X, MapPin, Calendar, Users } from 'lucide-rea
 import { Navigate, useNavigate } from 'react-router-dom';
 import { usePetRecommendations } from '../hooks/usePetRecommendation';
 import { fetchAllPets } from "../api/pet";
+import EmergencyPetsModal from "../components/EmergencyPetsModal";
+import axios from 'axios';
 
 
-
-// Mock data for demonstration
-
-
-// Navigation Component
-
-const PetCard = ({ pet, onViewDetails }) => {
+const PetCard = ({ pet, onViewDetails, user, onToggleFavorite }) => {
+  const isFavorited = user?.favorites?.includes(pet._id);
+  
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden">
       <div className="relative">
@@ -33,11 +31,17 @@ const PetCard = ({ pet, onViewDetails }) => {
   />
 )}
 
-        <div className="absolute top-3 right-3">
-          <button className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors">
-            <Heart className="h-4 w-4 text-gray-600 hover:text-red-500 transition-colors" />
+        {/* Favorite Button */}
+        {/* <div className="absolute top-3 right-3">
+          <button
+            onClick={() => onToggleFavorite(pet._id)}
+            className="bg-white/90 backdrop-blur-sm rounded-full p-2 hover:bg-white transition-colors"
+          >
+            <Heart
+              className={`h-4 w-4 transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-600 hover:text-red-500'}`}
+            />
           </button>
-        </div>
+        </div> */}
       </div>
 
       <div className="p-4">
@@ -89,7 +93,28 @@ const PetCard = ({ pet, onViewDetails }) => {
 };
 
 // Home Page Component
-const HomePage = ({userData, onViewPetDetails }) => {
+const HomePage = ({userData, onViewPetDetails, setUser }) => {
+
+  //emergency pets
+  const [emergencyPets, setEmergencyPets] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+
+  useEffect(() => {
+  const fetchEmergencyPets = async () => {
+    try {
+      const res = await axios.get("http://localhost:5002/api/pets/emergency");
+      if (res.data.length > 0) {
+        setEmergencyPets(res.data);
+        setShowModal(true);
+      }
+    } catch (error) {
+      console.error("Error fetching emergency pets:", error);
+    }
+  };
+
+  fetchEmergencyPets();
+}, []);
+
 
    const [isVisible, setIsVisible] = useState(false);
    useEffect(() => {
@@ -101,6 +126,31 @@ const HomePage = ({userData, onViewPetDetails }) => {
 
   const favoritePetIds = user?.favorites || [];
   const userLocation = user?.location?.city || "";
+
+  const handleToggleFavorite = async (petId) => {
+  if (!user) {
+    alert("Please log in to favorite pets.");
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://localhost:5002/api/users/favorites/${petId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`
+      }
+    });
+    const data = await res.json();
+
+    setUser(prev => ({
+      ...prev,
+      favorites: data.favoritePets
+    }));
+  } catch (err) {
+    console.error("Failed to toggle favorite:", err);
+  }
+};
 
 const navigate = useNavigate();
 
@@ -294,6 +344,11 @@ const navigate = useNavigate();
       {user && (
         <>
           <div className="text-center mb-12">
+             <EmergencyPetsModal
+        pets={emergencyPets}
+        open={showModal}
+        onClose={() => setShowModal(false)}
+      />
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
               Pets Recommended for You 🐾
             </h2>
@@ -311,7 +366,8 @@ const navigate = useNavigate();
   </p>
 ) : (
   limitToFour(recommendedPets).map((pet) => (
-    <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+    <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} user={userData}
+          onToggleFavorite={handleToggleFavorite}/>
   ))
 )}
             </div>
@@ -336,7 +392,7 @@ const navigate = useNavigate();
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {petsNearUser.map((pet) => (
-  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails}  user={user} onToggleFavorite={handleToggleFavorite}/>
 ))}
 
               </div>
@@ -356,7 +412,7 @@ const navigate = useNavigate();
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
          {mockPets.map((pet) => (
-  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails} />
+  <PetCard key={pet._id || pet.id} pet={pet} onViewDetails={onViewPetDetails}  user={user} onToggleFavorite={handleToggleFavorite}/>
 ))}
         </div>
         <div className="text-center mt-12">
@@ -504,9 +560,17 @@ const PetDetailsModal = ({ pet, isOpen, onClose, user, setCurrentPage }) => {
               <button className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 px-6 rounded-lg font-semibold transition-colors">
                 Apply to Adopt {pet.name}
               </button>
-              <button className="w-full border-2 border-gray-200 hover:border-amber-300 text-gray-700 hover:text-amber-700 py-3 px-6 rounded-lg font-medium transition-all">
-                Save to Favorites
-              </button>
+              <button
+  onClick={() => onToggleFavorite(pet._id) }
+  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${
+    user?.favorites?.includes(pet._id)
+      ? "bg-red-500 hover:bg-red-600 text-white"
+      : "border-2 border-gray-200 hover:border-amber-300 text-gray-700 hover:text-amber-700"
+  }`}
+>
+  {user?.favorites?.includes(pet._id) ? "Favorited" : "Save to Favorites"}
+</button>
+
             </div>
           ) : (
             <div className="text-center bg-amber-50 p-6 rounded-lg">
@@ -536,10 +600,11 @@ const App = ({user,setUser}) => {
   // const [user, setUser] = useState(null);
   const [selectedPet, setSelectedPet] = useState(null);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleViewPetDetails = (pet) => {
-    setSelectedPet(pet);
-    setIsPetModalOpen(true);
+    navigate(`/pets/${pet._id}`);
+
   };
 
   return (

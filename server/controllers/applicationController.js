@@ -48,7 +48,7 @@ export const submitApplication = async (req, res) => {
 export const getMyApplications = async (req, res) => {
   try {
     const applications = await Application.find({ applicant: req.user._id })
-      .populate('pet', 'name breed species location status')
+      .populate('pet', 'name breed species location status images')
       .sort({ createdAt: -1 });
 
     res.json(applications);
@@ -84,19 +84,19 @@ export const getApplicationsForPet = async (req, res) => {
 export const approveApplication = async (req, res) => {
   try {
     const applicationId = req.params.id;
+    const { approvalNote } = req.body; // <--- get note from request
     const application = await Application.findById(applicationId).populate('pet');
 
     if (!application) return res.status(404).json({ message: 'Application not found' });
 
-    // Check if current user owns the pet
     if (application.pet.listedBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to approve this application' });
     }
 
     application.status = 'Approved';
+    application.approvalNote = approvalNote || "";
     await application.save();
 
-    // Update pet status to Adopted
     application.pet.status = 'Adopted';
     await application.pet.save();
 
@@ -105,6 +105,7 @@ export const approveApplication = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // Reject an application (for pet owner)
 export const rejectApplication = async (req, res) => {
@@ -125,5 +126,27 @@ export const rejectApplication = async (req, res) => {
     res.json({ message: 'Application rejected', application });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Get all applications received for all pets listed by the logged-in user
+export const getApplicationsReceived = async (req, res) => {
+  try {
+    // Find all pets listed by the current user
+    const pets = await Pet.find({ listedBy: req.user._id });
+    const petIds = pets.map(p => p._id);
+
+    // Find all applications for those pets
+    const applications = await Application.find({ pet: { $in: petIds } })
+      .populate('applicant', 'name email location')
+      .populate('pet', 'name breed species status')
+      .populate('applicant', 'name email location profilePicture')
+      .sort({ createdAt: -1 });
+
+    res.json(applications);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error fetching received applications' });
   }
 };

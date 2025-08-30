@@ -23,18 +23,22 @@ export async function getBatchAdoptionLikelihood(petsData) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(petsData),
+      body: JSON.stringify({ pets: petsData }) // ✅ wrap the array here
     });
 
     if (!response.ok) {
+      const errorText = await response.text(); // log server error
+      console.error("Server rejected payload:", errorText);
       throw new Error(`Server error: ${response.status}`);
     }
 
     const data = await response.json();
-    return data; // Array of { adoption_likelihood: 0 or 1 }
+    return data;
   } catch (error) {
     console.error("Error fetching batch ML predictions:", error);
     throw error;
   }
 }
+
+
 

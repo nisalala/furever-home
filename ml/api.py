@@ -1,19 +1,14 @@
 from fastapi import FastAPI
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel
+from typing import List, Optional
 import numpy as np
 import pickle
+import math
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List
 
-# Initialize FastAPI app
+# --- FastAPI app setup ---
 app = FastAPI()
-
-# ✅ CORS config (avoid "*" with allow_credentials=True)
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
+origins = ["http://localhost:5173", "http://127.0.0.1:5173"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -22,22 +17,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load ML components
+# --- Load ML artifacts ---
 with open('scaler.pkl', 'rb') as f:
     scaler = pickle.load(f)
 
 with open('X_train.pkl', 'rb') as f:
     X_train = pickle.load(f)
-
 with open('y_train.pkl', 'rb') as f:
     y_train = pickle.load(f)
 
-with open('label_encoders.pkl', 'rb') as f:
-    label_encoders = pickle.load(f)
+with open('unique_values.pkl', 'rb') as f:
+    unique_values = pickle.load(f)
 
-# KNN model class
+num_start_idx = scaler['num_start_idx']
+median_numeric = scaler['median_numeric']
+X_min = scaler['min']
+X_max = scaler['max']
+
+# --- KNN Model ---
 class KNN:
-    def __init__(self, X_train, y_train, k=5):
+    def __init__(self, X_train, y_train, k=15):
         self.X_train = X_train
         self.y_train = y_train
         self.k = k
@@ -45,107 +44,101 @@ class KNN:
     def _euclidean_distance(self, x1, x2):
         return np.sqrt(np.sum((x1 - x2) ** 2))
 
+    def _predict_single(self, x):
+        distances = np.array([self._euclidean_distance(x, x_train) for x_train in self.X_train])
+        k_indices = np.argsort(distances)[:self.k]
+        k_nearest_labels = np.array([self.y_train[i] for i in k_indices])
+        k_nearest_distances = distances[k_indices]
+
+        # distance-weighted probability
+        weights = 1 / (k_nearest_distances + 1e-9)
+        prob = np.sum(weights * k_nearest_labels) / np.sum(weights)
+        pred = 1 if prob >= 0.5 else 0
+        return pred, prob
+
     def predict(self, X_test):
-        y_pred = []
-        for x in X_test:
-            distances = [self._euclidean_distance(x, x_train) for x_train in self.X_train]
-            k_indices = np.argsort(distances)[:self.k]
-            k_nearest_labels = [self.y_train[i] for i in k_indices]
-            counts = np.bincount(k_nearest_labels)
-            y_pred.append(np.argmax(counts))
-        return y_pred
+        return np.array([self._predict_single(x)[0] for x in X_test])
 
-# Instantiate model
-knn = KNN(X_train, y_train, k=5)
+    def predict_proba(self, X_test):
+        return np.array([self._predict_single(x)[1] for x in X_test])
 
-# Schema for one pet
+knn = KNN(X_train, y_train, k=15)
+
+# --- Schemas ---
 class PetFeatures(BaseModel):
     PetType: str
     Breed: str
-    AgeMonths: float
-    Color: str
     Size: str
-    WeightKg: float
-    Vaccinated: int
-    HealthCondition: int
-    TimeInShelterDays: int
-    AdoptionFee: float
-    PreviousOwner: int
+    AgeMonthsTotal: Optional[float] = None
+    Color: Optional[str] = "Unknown"
+    WeightKg: Optional[float] = None
+    Vaccinated: Optional[int] = 0
 
-# Single prediction endpoint
-@app.post('/predict')
-def predict(pet: PetFeatures):
-    pet_dict = pet.dict()
+class PetFeaturesList(BaseModel):
+    pets: List[PetFeatures]
 
-    # Encode categorical fields with unseen value handling
-    for col, le in label_encoders.items():
-        val = pet_dict[col]
-        if val in le.classes_:
-            pet_dict[col] = le.transform([val])[0]
-        else:
-            pet_dict[col] = -1  # Default for unseen labels
+# --- Helper: one-hot encoding ---
+def one_hot_encode(val, categories):
+    vec = np.zeros(len(categories))
+    if val in categories:
+        vec[categories.index(val)] = 1
+    return vec
 
-    # Prepare and scale input
-    input_data = np.array([[
-        pet_dict['PetType'],
-        pet_dict['Breed'],
-        pet_dict['AgeMonths'],
-        pet_dict['Color'],
-        pet_dict['Size'],
-        pet_dict['WeightKg'],
-        pet_dict['Vaccinated'],
-        pet_dict['HealthCondition'],
-        pet_dict['TimeInShelterDays'],
-        pet_dict['AdoptionFee'],
-        pet_dict['PreviousOwner']
-    ]])
-    input_scaled = scaler.transform(input_data)
-
-    prediction = knn.predict(input_scaled)
-
-    return {
-        "adoption_likelihood": int(prediction[0]),
-        "message": "High likelihood of adoption" if prediction[0] == 1 else "Low likelihood of adoption"
-    }
-
-# Batch prediction input using Pydantic v2 RootModel
-class PetFeaturesList(RootModel[List[PetFeatures]]):
-    pass
-
-# Batch prediction endpoint
+# --- Batch Prediction Endpoint ---
 @app.post('/predict_batch')
-def predict_batch(pets: PetFeaturesList):
+def predict_batch(pet_list: PetFeaturesList):
     encoded_inputs = []
 
-    for pet in pets.root:
+    for pet in pet_list.pets:
         pet_dict = pet.dict()
-        for col, le in label_encoders.items():
-            val = pet_dict[col]
-            if val in le.classes_:
-                pet_dict[col] = le.transform([val])[0]
-            else:
-                pet_dict[col] = -1  # Default for unseen labels
-        encoded_inputs.append([
-            pet_dict['PetType'],
-            pet_dict['Breed'],
-            pet_dict['AgeMonths'],
-            pet_dict['Color'],
-            pet_dict['Size'],
-            pet_dict['WeightKg'],
-            pet_dict['Vaccinated'],
-            pet_dict['HealthCondition'],
-            pet_dict['TimeInShelterDays'],
-            pet_dict['AdoptionFee'],
-            pet_dict['PreviousOwner']
-        ])
+        row_encoded = []
 
-    input_scaled = scaler.transform(np.array(encoded_inputs))
-    preds = knn.predict(input_scaled)
+        # --- One-hot encode categorical columns ---
+        for col in unique_values.keys():
+            val = str(pet_dict.get(col, "Unknown")).strip()
+            if val not in unique_values[col]:
+                val = "Unknown"
+            row_encoded.extend(one_hot_encode(val, unique_values[col]))
 
-    return [
-        {
+        # --- Numeric features ---
+        numeric_features = []
+        # AgeMonthsTotal
+        age = pet_dict.get("AgeMonthsTotal")
+        if age is None or age <= 0:
+            numeric_features.append(median_numeric[0])
+        else:
+            numeric_features.append(age)
+        # WeightKg
+        weight = pet_dict.get("WeightKg")
+        if weight is None or weight <= 0:
+            numeric_features.append(median_numeric[1])
+        else:
+            numeric_features.append(weight)
+        # Vaccinated
+        vaccinated = int(pet_dict.get("Vaccinated", 0))
+        numeric_features.append(vaccinated)
+
+        # Convert to array
+        numeric_features = np.array(numeric_features, dtype=float)
+        # --- Scale numeric features ---
+        numeric_features = (numeric_features - X_min) / (X_max - X_min + 1e-9)
+        row_encoded.extend(numeric_features)
+
+        encoded_inputs.append(row_encoded)
+
+    X_input = np.array(encoded_inputs, dtype=float)
+
+    # --- Predictions ---
+    preds = knn.predict(X_input)
+    probs = knn.predict_proba(X_input)
+
+    results = []
+    for pred, prob in zip(preds, probs):
+        prob_display = "N/A" if math.isnan(prob) else f"{round(prob*100,2)}%"
+        results.append({
             "adoption_likelihood": int(pred),
+            "probability": prob_display,
             "message": "High likelihood of adoption" if pred == 1 else "Low likelihood of adoption"
-        }
-        for pred in preds
-    ]
+        })
+
+    return results

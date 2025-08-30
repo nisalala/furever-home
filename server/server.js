@@ -13,6 +13,9 @@ import mlRoutes from './routes/ml.js';
 
 import adminRoutes from './routes/adminRoutes.js';
 
+import notificationRoutes from "./routes/notificationRoute.js";
+
+
 //images ko lagi
 import path from "path";
 import { fileURLToPath } from "url";
@@ -28,7 +31,11 @@ console.log('JWT_SECRET:', process.env.JWT_SECRET);
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
+
 app.use(express.json()); // To parse JSON bodies
 
 // Serve the uploads folder publicly at /uploads URL
@@ -61,6 +68,9 @@ app.get('/', (req, res) => {
 
 //admin
 app.use('/api/admin', adminRoutes);
+
+// notif ko lai
+app.use("/api/notifications", notificationRoutes);
 
 // Connect to MongoDB and Start Server
 const PORT = 5002 || process.env.PORT;

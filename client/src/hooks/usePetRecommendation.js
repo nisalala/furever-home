@@ -6,14 +6,12 @@ const allSpecies = ["Dog", "Cat", "Bird", "Rabbit"];
 const allBreeds = [
   "Labrador", "Siamese", "Beagle", "Maine Coon", "German Shepherd",
   "Parakeet", "Bulldog", "Dutch", "Boxer", "Persian", "Golden Retriever",
-  "Bengal", "Lionhead", "Poodle", "Russian Blue"
+  "Bengal", "Lionhead", "Poodle", "Russian Blue", "Unknown"
 ];
 const allSizes = ["Small", "Medium", "Large"];
-const allGenders = ["Male", "Female"];
+const allColors = ["Black", "White", "Brown", "Golden", "Grey", "Mixed", "Other"];
 
-
-
-// Helper: One-hot encode a value or array of values from possible options
+// One-hot encode a value or array of values from possible options
 function oneHotEncode(valueOrArray, options) {
   return options.map(opt => {
     if (Array.isArray(valueOrArray)) {
@@ -24,104 +22,102 @@ function oneHotEncode(valueOrArray, options) {
   });
 }
 
-// Normalize age using min and max from dataset
-function normalizeAge(age, minAge, maxAge) {
-  if (maxAge === minAge) return 0.5; // avoid division by zero
-  return (age - minAge) / (maxAge - minAge);
+// Normalize numeric feature
+function normalize(value, min, max) {
+  if (max === min) return 0.5; // avoid division by zero
+  return (value - min) / (max - min);
 }
 
-// Euclidean distance between two vectors
-function euclideanDistance(a, b) {
-  return Math.sqrt(a.reduce((sum, val, i) => sum + (val - b[i]) ** 2, 0));
+// Weighted Euclidean distance
+function weightedEuclideanDistance(a, b, weights) {
+  return Math.sqrt(
+    a.reduce((sum, val, i) => sum + weights[i] * (val - b[i]) ** 2, 0)
+  );
 }
 
-// Build vector for a pet object
-function buildVectorForPet(pet, minAge, maxAge) {
+// Build vector for a pet
+function buildVectorForPet(pet, minAge, maxAge, minWeight, maxWeight) {
   return [
     ...oneHotEncode(pet.petType, allSpecies),
     ...oneHotEncode(pet.breed, allBreeds),
     ...oneHotEncode(pet.size, allSizes),
-    ...oneHotEncode(pet.gender, allGenders),
-    normalizeAge(pet.ageMonths, minAge, maxAge),
+    ...oneHotEncode(pet.color, allColors),
+    normalize(pet.ageMonths, minAge, maxAge),
+    normalize(pet.weightKg, minWeight, maxWeight),
     pet.vaccinated === 1 ? 1 : 0,
   ];
 }
 
 // Build vector for user preferences
-function buildVectorForPreference(pref, minAge, maxAge) {
+function buildVectorForPreference(pref, minAge, maxAge, minWeight, maxWeight) {
   const avgAge = ((pref.ageRange?.min ?? minAge) + (pref.ageRange?.max ?? maxAge)) / 2;
+  const avgWeight = ((pref.weightRange?.min ?? minWeight) + (pref.weightRange?.max ?? maxWeight)) / 2;
+
   return [
     ...oneHotEncode(pref.species || [], allSpecies),
     ...oneHotEncode(pref.breed || [], allBreeds),
     ...oneHotEncode(pref.size || [], allSizes),
-    ...oneHotEncode(pref.gender || [], allGenders),
-    normalizeAge(avgAge, minAge, maxAge),
+    ...oneHotEncode(pref.color || [], allColors),
+    normalize(avgAge, minAge, maxAge),
+    normalize(avgWeight, minWeight, maxWeight),
     pref.vaccinated ? 1 : 0,
   ];
 }
 
 export function usePetRecommendations(userPreferences) {
-
-//adding pets from db instead of just mock
-    const [pets, setAllPets] = useState([]);
-
-    useEffect(() => {
-  async function loadPets() {
-    const pets = await fetchAllPets();
-
-    // Normalize backend pets for your recommendation hook
-    const processed = pets.map(p => ({
-      ...p,
-      ageMonths: (p.age?.years || 0) * 12 + (p.age?.months || 0),
-      petType: p.species, // normalize name for your hook
-      breed: p.breed,
-      gender: p.gender,
-      size: p.size,
-      vaccinated: p.vaccinated ? 1 : 0, // your hook expects 1 or 0
-      imageUrl: p.images?.[0] ? `http://localhost:5002/${p.images[0]}` : "",
-// if images exist
-    }));
-
-    setAllPets(processed);
-  }
-
-  loadPets();
-}, []);
-
-
-
+  const [pets, setAllPets] = useState([]);
   const [recommendedPets, setRecommendedPets] = useState([]);
 
+  // Fetch all pets from DB
   useEffect(() => {
-    if (!userPreferences || !pets || pets.length === 0) {
+    async function loadPets() {
+      const pets = await fetchAllPets();
+
+      const processed = pets.map(p => ({
+        ...p,
+        ageMonths: (p.age?.years || 0) * 12 + (p.age?.months || 0),
+        petType: p.species,
+        breed: p.breed,
+        size: p.size,
+        color: p.color || "Other",
+        weightKg: p.weightKg || 0,
+        vaccinated: p.vaccinated ? 1 : 0,
+        imageUrl: p.images?.[0] ? `http://localhost:5002/${p.images[0]}` : "",
+      }));
+
+      setAllPets(processed);
+    }
+
+    loadPets();
+  }, []);
+
+  useEffect(() => {
+    if (!userPreferences || pets.length === 0) {
       setRecommendedPets([]);
       return;
     }
 
-    // 1. Create a map of species → allowed breeds
+    // Map breeds to species for hard filtering
     const breedMap = {};
     const userBreeds = userPreferences.breed || [];
 
     userBreeds.forEach(breed => {
-      if (["Bulldog", "Beagle", "Labrador", "German Shepherd", "Boxer", "Poodle", "Golden Retriever"].includes(breed)) {
+      if (["Bulldog","Beagle","Labrador","German Shepherd","Boxer","Poodle","Golden Retriever"].includes(breed)) {
         breedMap.Dog = [...(breedMap.Dog || []), breed];
-      } else if (["Dutch", "Lionhead"].includes(breed)) {
+      } else if (["Dutch","Lionhead"].includes(breed)) {
         breedMap.Rabbit = [...(breedMap.Rabbit || []), breed];
-      } else if (["Siamese", "Maine Coon", "Persian", "Bengal", "Russian Blue"].includes(breed)) {
+      } else if (["Siamese","Maine Coon","Persian","Bengal","Russian Blue"].includes(breed)) {
         breedMap.Cat = [...(breedMap.Cat || []), breed];
       } else if (["Parakeet"].includes(breed)) {
         breedMap.Bird = [...(breedMap.Bird || []), breed];
       }
     });
 
-    // 2. Filter pets by species and (optionally) breed
+    // Soft filtering with hard species/breed rules
     const filteredPets = pets.filter(pet => {
       const allowedSpecies = userPreferences.species || [];
+      if (allowedSpecies.length && !allowedSpecies.includes(pet.petType)) return false;
 
-      // Filter by species
-      if (!allowedSpecies.includes(pet.petType)) return false;
-
-      // Filter by breed if user specified breeds for this species
       const allowedBreedsForSpecies = breedMap[pet.petType] || [];
       if (allowedBreedsForSpecies.length > 0 && !allowedBreedsForSpecies.includes(pet.breed)) {
         return false;
@@ -130,32 +126,41 @@ export function usePetRecommendations(userPreferences) {
       return true;
     });
 
-    // 3. If no pets matched after filter, return early
     if (filteredPets.length === 0) {
       setRecommendedPets([]);
       return;
     }
 
-    // 4. KNN: prepare vectors
+    // Feature weights (match KNN importance)
+    const weights = [
+      ...Array(allSpecies.length).fill(3), // Species
+      ...Array(allBreeds.length).fill(2),  // Breed
+      ...Array(allSizes.length).fill(4),   // Size
+      ...Array(allColors.length).fill(2),  // Color
+      1.5, // Age
+      1.5, // Weight
+      1    // Vaccinated
+    ];
+
+    // Get min/max for numeric features
     const ages = filteredPets.map(p => p.ageMonths);
+    const weightsKg = filteredPets.map(p => p.weightKg);
     const minAge = Math.min(...ages);
     const maxAge = Math.max(...ages);
+    const minWeight = Math.min(...weightsKg);
+    const maxWeight = Math.max(...weightsKg);
 
-    const userVector = buildVectorForPreference(userPreferences, minAge, maxAge);
+    const userVector = buildVectorForPreference(userPreferences, minAge, maxAge, minWeight, maxWeight);
 
     const scoredPets = filteredPets.map(pet => {
-      const petVector = buildVectorForPet(pet, minAge, maxAge);
-      const distance = euclideanDistance(userVector, petVector);
+      const petVector = buildVectorForPet(pet, minAge, maxAge, minWeight, maxWeight);
+      const distance = weightedEuclideanDistance(userVector, petVector, weights);
       return { pet, distance };
     });
 
-    // 5. Sort by similarity (lower distance = better match)
     scoredPets.sort((a, b) => a.distance - b.distance);
 
-    // 6. Take top 8
-    const topPets = scoredPets.slice(0, 8).map(sp => sp.pet);
-
-    setRecommendedPets(topPets);
+    setRecommendedPets(scoredPets.slice(0, 8).map(sp => sp.pet));
   }, [userPreferences, pets]);
 
   return recommendedPets;

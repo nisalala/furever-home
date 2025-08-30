@@ -1,123 +1,139 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Heart, MapPin, Calendar, Star } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from "react";
+import { Search, Heart, MapPin, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 const backendUrl = "http://localhost:5002";
 
-const ViewAllPetsPage = ({user, setUser}) => {
-
+const ViewAllPetsPage = ({ user }) => {
   const navigate = useNavigate();
 
-const handleLearnMore = (petId) => {
-    navigate(`/pets/${petId}`);
-};
-
-const [allPets, setAllPets] = useState([]);
-
-useEffect(() => {
-  axios.get("http://localhost:5002/api/pets")
-    .then((res) => {
-      setAllPets(res.data);
-    })
-    .catch((err) => {
-      console.error("Failed to fetch pets:", err);
-    });
-}, []);
-
-// Reset filters once pets are loaded
-useEffect(() => {
-  if (allPets.length > 0) {
-    setFilters({
-      type: '',
-      breed: '',
-      ageRange: '',
-      location: '',
-      size: '',
-      gender: ''
-    });
-  }
-}, [allPets]);
-
-
-
+  const [allPets, setAllPets] = useState([]);
   const [filters, setFilters] = useState({
-    type: '',
-    breed: '',
-    ageRange: '',
-    location: '',
-    size: '',
-    gender: ''
+    type: "",
+    breed: "",
+    ageRange: "",
+    location: "",
+    size: "",
+    gender: "",
   });
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState("name");
   const [favorites, setFavorites] = useState(new Set());
 
-const filterOptions = useMemo(() => ({
-  types: [...new Set(allPets.map(pet => pet.species).filter(Boolean))],
-  breeds: [...new Set(allPets.map(pet => pet.breed).filter(Boolean))],
-  locations: [...new Set(allPets.map(pet => pet.location).filter(Boolean))],
-  sizes: [...new Set(allPets.map(pet => pet.size).filter(Boolean))],
-  genders: [...new Set(allPets.map(pet => pet.gender).filter(Boolean))]
-}), [allPets]);
+  // Fetch all pets
+  useEffect(() => {
+    const fetchPets = async () => {
+      try {
+        const res = await axios.get(`${backendUrl}/api/pets`);
+        setAllPets(res.data);
+      } catch (err) {
+        console.error("Failed to fetch pets:", err);
+      }
+    };
+    fetchPets();
+  }, []);
 
+  // Fetch user's favorite pets
+  useEffect(() => {
+    if (!user) return;
 
+    const fetchFavorites = async () => {
+      try {
+        const res = await axios.get(`${backendUrl}/api/users/favorites`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+        setFavorites(new Set(res.data.map((p) => p._id)));
+      } catch (err) {
+        console.error("Failed to fetch favorites:", err.response?.data || err.message);
+      }
+    };
+    fetchFavorites();
+  }, [user]);
+
+  // Filter options
+  const filterOptions = useMemo(
+    () => ({
+      types: [...new Set(allPets.map((pet) => pet.species).filter(Boolean))],
+      breeds: [...new Set(allPets.map((pet) => pet.breed).filter(Boolean))],
+      locations: [...new Set(allPets.map((pet) => pet.location).filter(Boolean))],
+      sizes: [...new Set(allPets.map((pet) => pet.size).filter(Boolean))],
+      genders: [...new Set(allPets.map((pet) => pet.gender).filter(Boolean))],
+    }),
+    [allPets]
+  );
+
+  // Filtered pets
   const filteredPets = useMemo(() => {
-    let filtered = allPets.filter(pet => {
-      const matchesSearch = pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const filtered = allPets.filter((pet) => {
+      const matchesSearch =
+        pet.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         pet.breed.toLowerCase().includes(searchTerm.toLowerCase()) ||
         pet.description.toLowerCase().includes(searchTerm.toLowerCase());
 
-const matchesType = !filters.type || pet.species === filters.type;
+      const matchesType = !filters.type || pet.species === filters.type;
       const matchesBreed = !filters.breed || pet.breed === filters.breed;
       const matchesLocation = !filters.location || pet.location === filters.location;
       const matchesSize = !filters.size || pet.size === filters.size;
       const matchesGender = !filters.gender || pet.gender === filters.gender;
 
-    const totalMonths = (pet.age?.years || 0) * 12 + (pet.age?.months || 0);
-
-const matchesAge = !filters.ageRange || (() => {
-  switch (filters.ageRange) {
-    case 'young': return totalMonths <= 24;
-    case 'adult': return totalMonths > 24 && totalMonths <= 60;
-    case 'senior': return totalMonths > 60;
-    default: return true;
-  }
-})();
+      const totalMonths = (pet.age?.years || 0) * 12 + (pet.age?.months || 0);
+      const matchesAge =
+        !filters.ageRange ||
+        (filters.ageRange === "young"
+          ? totalMonths <= 24
+          : filters.ageRange === "adult"
+          ? totalMonths > 24 && totalMonths <= 60
+          : filters.ageRange === "senior"
+          ? totalMonths > 60
+          : true);
 
       return matchesSearch && matchesType && matchesBreed && matchesLocation && matchesSize && matchesGender && matchesAge;
     });
 
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'name': return a.name.localeCompare(b.name);
-        case 'age': return a.age - b.age;
-        case 'rating': return b.rating - a.rating;
-        default: return 0;
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "age":
+          const ageA = (a.age?.years || 0) * 12 + (a.age?.months || 0);
+          const ageB = (b.age?.years || 0) * 12 + (b.age?.months || 0);
+          return ageA - ageB;
+        case "rating":
+          return (b.rating || 0) - (a.rating || 0);
+        default:
+          return 0;
       }
     });
 
     return filtered;
-  }, [searchTerm, filters, sortBy]);
+  }, [allPets, filters, searchTerm, sortBy]);
 
-  const toggleFavorite = (id) => {
-    setFavorites(prev => {
-      const updated = new Set(prev);
-      updated.has(id) ? updated.delete(id) : updated.add(id);
-      return updated;
-    });
+  // Toggle favorite
+  const toggleFavorite = async (petId) => {
+    if (!user) {
+      alert("Please log in to favorite pets");
+      return;
+    }
+
+    try {
+      const res = await axios.put(
+        `${backendUrl}/api/users/favorites/${petId}`,
+        {},
+        { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+      );
+
+      setFavorites(new Set(res.data.favoritePets));
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err.response?.data || err.message);
+    }
   };
 
+  const handleLearnMore = (petId) => navigate(`/pets/${petId}`);
+
   const clearFilters = () => {
-    setFilters({
-      type: '',
-      breed: '',
-      ageRange: '',
-      location: '',
-      size: '',
-      gender: ''
-    });
-    setSearchTerm('');
+    setFilters({ type: "", breed: "", ageRange: "", location: "", size: "", gender: "" });
+    setSearchTerm("");
   };
 
   return (
@@ -162,18 +178,19 @@ const matchesAge = !filters.ageRange || (() => {
           </div>
         </div>
 
-        {/* Filter Selects */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {['type', 'breed', 'ageRange', 'location', 'size', 'gender'].map((filterKey) => (
+          {["type", "breed", "ageRange", "location", "size", "gender"].map((key) => (
             <select
-              key={filterKey}
-              value={filters[filterKey]}
-              onChange={(e) => setFilters(prev => ({ ...prev, [filterKey]: e.target.value }))}
+              key={key}
+              value={filters[key]}
+              onChange={(e) => setFilters((prev) => ({ ...prev, [key]: e.target.value }))}
               className="px-4 py-2 rounded-lg bg-white border border-gray-200 focus:ring-2 focus:ring-orange-400"
             >
-              <option value="">All {filterKey.charAt(0).toUpperCase() + filterKey.slice(1)}</option>
-              {filterOptions[filterKey + 's']?.map(option => (
-                <option key={option} value={option}>{option}</option>
+              <option value="">All {key.charAt(0).toUpperCase() + key.slice(1)}</option>
+              {filterOptions[key + "s"]?.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
               ))}
             </select>
           ))}
@@ -182,82 +199,65 @@ const matchesAge = !filters.ageRange || (() => {
 
       {/* Pet Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 m-8 px-14">
-  {filteredPets.map((pet) => (
-    <div
-  key={pet._id}
-  className="bg-white shadow-md rounded-xl overflow-hidden transition-transform duration-300 hover:shadow-xl hover:-translate-y-1"
->
-  {/* Image */}
-  <div className="relative h-48 overflow-hidden">
-    <img
-      src={pet.images && pet.images.length > 0 
-  ? `${backendUrl}/${pet.images[0]}` 
-  : "/default-pet.jpg"}
+        {filteredPets.map((pet) => (
+          <div
+            key={pet._id}
+            className="bg-white shadow-md rounded-xl overflow-hidden transition-transform duration-300 hover:shadow-xl hover:-translate-y-1"
+          >
+            <div className="relative h-48 overflow-hidden">
+              <img
+                src={pet.images?.length ? `${backendUrl}/${pet.images[0]}` : "/default-pet.jpg"}
+                alt={pet.name}
+                className="w-full h-full object-cover"
+              />
+              <button
+                onClick={() => toggleFavorite(pet._id)}
+                className={`absolute top-3 right-3 p-2 rounded-full transition ${
+                  favorites.has(pet._id)
+                    ? "bg-red-500 text-white"
+                    : "bg-white text-gray-600 hover:bg-red-500 hover:text-white"
+                }`}
+              >
+                <Heart className="w-5 h-5" />
+              </button>
+            </div>
 
-      alt={pet.name}
-      className="w-full h-full object-cover"
-    />
-    <button
-      onClick={() => toggleFavorite(pet._id)}
-      className={`absolute top-3 right-3 p-2 rounded-full transition ${
-        favorites.has(pet._id)
-          ? "bg-red-500 text-white"
-          : "bg-white text-gray-600 hover:bg-red-500 hover:text-white"
-      }`}
-    >
-      <Heart className="w-5 h-5" />
-    </button>
-  </div>
+            <div className="p-4 space-y-2">
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="text-lg font-bold text-gray-800">{pet.name}</h3>
+                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">{pet.species}</span>
+              </div>
 
-  {/* Info */}
-  <div className="p-4 space-y-2">
-    <div className="flex justify-between items-center mb-1">
-      <h3 className="text-lg font-bold text-gray-800">{pet.name}</h3>
-      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
-        {pet.species}
-      </span>
-    </div>
+              <p className="text-sm text-gray-600">{pet.breed}</p>
 
-    <p className="text-sm text-gray-600">{pet.breed}</p>
+              <div className="flex justify-between text-sm text-gray-500">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  {pet.age?.years || 0}y {pet.age?.months || 0}m
+                </div>
+                <div className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  {pet.location}
+                </div>
+              </div>
 
-    <div className="flex justify-between text-sm text-gray-500">
-      <div className="flex items-center gap-1">
-        <Calendar className="w-4 h-4" />
-        {pet.age?.years || 0}y {pet.age?.months || 0}m
+              <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{pet.size}</span>
+                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">{pet.gender}</span>
+                {pet.vaccinated && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">Vaccinated</span>}
+                {pet.status === "Emergency" && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full animate-pulse">Emergency</span>}
+              </div>
+
+              <button
+                onClick={() => handleLearnMore(pet._id)}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-lg font-medium transition-colors mt-3"
+              >
+                Learn More
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
-      <div className="flex items-center gap-1">
-        <MapPin className="w-4 h-4" />
-        {pet.location}
-      </div>
-    </div>
-
-    <div className="flex flex-wrap gap-2 mt-2 text-xs">
-      <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">{pet.size}</span>
-      <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">{pet.gender}</span>
-      {pet.vaccinated && (
-        <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-          Vaccinated
-        </span>
-      )}
-      {pet.status === "Emergency" && (
-        <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full animate-pulse">
-          Emergency
-        </span>
-      )}
-    </div>
-
-    <button
-      onClick={() => handleLearnMore(pet._id)}
-      className="w-full bg-amber-500 hover:bg-amber-600 text-white py-2.5 px-4 rounded-lg font-medium transition-colors mt-3"
-    >
-      Learn More
-    </button>
-  </div>
-</div>
-
-  ))}
-</div>
-
 
       {filteredPets.length === 0 && (
         <div className="text-center py-16">

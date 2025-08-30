@@ -23,7 +23,9 @@ const applicationSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
-  }
+  },
+  approvalNote: { type: String, default: "" } // optional note/contact info
+
 });
 
 export default mongoose.model("Application", applicationSchema);

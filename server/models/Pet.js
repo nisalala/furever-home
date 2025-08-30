@@ -27,6 +27,14 @@ const petSchema = new mongoose.Schema({
     enum: ["Small", "Medium", "Large"],
     required: true
   },
+  color: {            // NEW field
+    type: String,
+    default: "Unknown"
+  },
+  weightKg: {         // NEW field
+    type: Number,
+    default: 0
+  },
   description: {
     type: String,
     default: ""
@@ -50,6 +58,18 @@ const petSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+    coordinates: {
+    type: [Number], // [longitude, latitude]
+    default: [85.324, 27.7172], // Default: Kathmandu coords
+  },
+  emergencyRequested: {
+  type: Boolean,
+  default: false
+},
+emergencyReason: {
+  type: String,
+  default: ""
+},
   status: {
     type: String,
     enum: ["Available", "Adopted", "Emergency"],

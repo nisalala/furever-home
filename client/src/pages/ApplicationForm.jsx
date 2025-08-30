@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { CheckCircle, Send } from "lucide-react";
 import toast from "react-hot-toast";
+import axios from "axios"; // <-- make sure axios is imported
 
-const AdoptionForm = ({ petName, user }) => {
+const AdoptionForm = ({ petName, user, petId, closeForm }) => {
   const [form, setForm] = useState({
     fullName: user?.name || "",
     contact: "",
@@ -14,7 +15,7 @@ const AdoptionForm = ({ petName, user }) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!form.fullName || !form.contact || !form.reason) {
@@ -22,12 +23,43 @@ const AdoptionForm = ({ petName, user }) => {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.error("You must be logged in to submit an application.");
+      return;
+    }
+
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+
+    try {
+      await axios.post(
+        "http://localhost:5002/api/applications",
+        {
+          pet: petId,
+          message: form.reason,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
       toast.success("Adoption request submitted! We'll get back to you soon.");
+      
+      // Reset form
       setForm({ fullName: user?.name || "", contact: "", reason: "" });
-    }, 1000);
+
+      // Close the form modal
+      if (closeForm) closeForm();
+
+    } catch (err) {
+      console.error("Application submission failed:", err);
+      toast.error(err.response?.data?.message || "Failed to submit application.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

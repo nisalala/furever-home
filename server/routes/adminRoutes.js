@@ -90,6 +90,50 @@ router.put('/reject-user/:id', protect, isAdmin, async (req, res) => {
   res.json({ message: "User verification rejected" });
 });
 
+//emergency part
+// GET all emergency pet requests
+
+router.get('/emergency-pets', protect, isAdmin, async (req, res) => {
+  try {
+    const pets = await Pet.find({ emergencyRequested: true }).populate('listedBy', 'name email');
+    res.json(pets);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error fetching emergency pets' });
+  }
+});
+
+router.put('/emergency/:id/approve', protect, isAdmin, async (req, res) => {
+  try {
+    const pet = await Pet.findById(req.params.id);
+    if (!pet) return res.status(404).json({ message: 'Pet not found' });
+
+    pet.status = "Emergency";
+    pet.emergencyRequested = false;
+    await pet.save();
+
+    res.json({ message: 'Emergency approved' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error approving emergency' });
+  }
+});
+
+router.put('/emergency/:id/reject', protect, isAdmin, async (req, res) => {
+  try {
+    const pet = await Pet.findById(req.params.id);
+    if (!pet) return res.status(404).json({ message: 'Pet not found' });
+
+    pet.emergencyRequested = false;
+    await pet.save();
+
+    res.json({ message: 'Emergency rejected' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error rejecting emergency' });
+  }
+});
+
 
 
 export default router;

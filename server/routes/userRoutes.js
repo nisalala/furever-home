@@ -5,6 +5,10 @@ import { getUserProfile } from "../controllers/userController.js";
 import { updateUserPreferences } from '../controllers/updateUserPreferences.js';
 import multer from "multer";
 import path from "path";
+import { toggleFavoritePet, getFavoritePets } from '../controllers/userController.js';
+
+
+
 
 const router = express.Router();
 
@@ -108,6 +112,14 @@ router.put("/:id/verify", protect, async (req, res) => {
     res.status(500).json({ message: "Failed to update verification status" });
   }
 });
+
+
+// Get user's favorite pets
+router.get("/favorites", protect, getFavoritePets);
+
+// Add/remove a pet from favorites
+router.put("/favorites/:petId", protect, toggleFavoritePet);
+
 
 
 export default router;

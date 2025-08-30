@@ -3,6 +3,7 @@ import {
   submitApplication, 
   getMyApplications, 
   getApplicationsForPet, 
+  getApplicationsReceived, 
   approveApplication, 
   rejectApplication 
 } from '../controllers/applicationController.js';
@@ -24,5 +25,9 @@ router.put('/:id/approve', protect, approveApplication);
 
 // Reject an application (for pet owner)
 router.put('/:id/reject', protect, rejectApplication);
+
+// Get all applications received for all pets listed by logged-in user
+router.get('/received', protect, getApplicationsReceived);
+
 
 export default router;

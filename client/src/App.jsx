@@ -7,12 +7,13 @@ import PetDetails from "./pages/PetDetails"; //
 import ApplicationForm from "./pages/ApplicationForm"; 
 import BrowsePets from "./pages/BrowsePets"; 
 import UploadPet from "./pages/UploadPet";
-
+import ScrollToTop from "./components/ScrollToTop";
 import Testt from "./pages/testing"; 
 import Recom from "./pages/Recom"; 
 import Preference from "./pages/Preferences"; 
 import UserProfile from "./pages/UserProfile";
 import AdminDashboard from './pages/AdminDashboard'; 
+import Application from './pages/Applications'; 
 
 import axios from "axios";
 
@@ -68,6 +69,7 @@ export default function App() {
 
   return (
     <>
+       <ScrollToTop />
       <Navigation user={user} setUser={setUser}/>
       <Routes>
         <Route path="/" element={<Home user={user} setUser={setUser}/>} />
@@ -76,6 +78,7 @@ export default function App() {
         <Route path="/browse" element={<BrowsePets user={user} setUser={setUser}/>} />
         <Route path="/pets/:id" element={<PetDetails />} />
         <Route path="/upload" element={<UploadPet />} />
+        <Route path="/applications" element={<Application />} />
         <Route path="/apply/:petId" element={<ApplicationForm />} />
         <Route path="/test" element={<Testt user={user} setUser={setUser}/>} />
         <Route path="/recom" element={<Recom user={user} setUser={setUser}/>} />
